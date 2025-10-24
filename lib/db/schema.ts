@@ -483,3 +483,166 @@ export const saleItems = sqliteTable("sale_items", {
     .notNull()
     .default(sql`(unixepoch())`),
 });
+
+// Outbound Orders (Sales Orders / Transfer Orders)
+export const outboundOrders = sqliteTable("outbound_orders", {
+  id: text("id").primaryKey(),
+  orderNumber: text("order_number").notNull().unique(),
+  customerId: text("customer_id").references(() => customers.id),
+  destination: text("destination"),
+  priority: text("priority", { enum: ["Low", "Medium", "High"] }).notNull().default("Medium"),
+  dueDate: integer("due_date", { mode: "timestamp" }).notNull(),
+  status: text("status", { enum: ["Draft", "Waiting pick", "Assigned", "Ready for wave", "Picking", "Picked", "Staged", "Shipped"] }).notNull().default("Draft"),
+  lineCount: integer("line_count").notNull().default(0),
+  waveId: text("wave_id").references(() => waves.id),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
+});
+
+// Waves (Picking Waves)
+export const waves = sqliteTable("waves", {
+  id: text("id").primaryKey(),
+  waveNumber: text("wave_number").notNull().unique(),
+  name: text("name").notNull(),
+  pickerTeamId: text("picker_team_id"),
+  pickerTeam: text("picker_team"),
+  status: text("status", { enum: ["Draft", "Scheduled", "In Progress", "Completed", "Cancelled"] }).notNull().default("Draft"),
+  priorityFocus: text("priority_focus", { enum: ["Low", "Balanced", "High"] }).notNull().default("Balanced"),
+  startTime: integer("start_time", { mode: "timestamp" }),
+  endTime: integer("end_time", { mode: "timestamp" }),
+  orderCount: integer("order_count").notNull().default(0),
+  lineCount: integer("line_count").notNull().default(0),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
+});
+
+// Shipments
+export const shipments = sqliteTable("shipments", {
+  id: text("id").primaryKey(),
+  shipmentNumber: text("shipment_number").notNull().unique(),
+  carrier: text("carrier").notNull(),
+  service: text("service").notNull(),
+  cartonCount: integer("carton_count").notNull().default(0),
+  weight: real("weight").notNull().default(0),
+  stage: text("stage", { enum: ["Packing", "Staged", "Dispatched", "In Transit", "Delivered"] }).notNull().default("Packing"),
+  plannedPickup: integer("planned_pickup", { mode: "timestamp" }),
+  actualPickup: integer("actual_pickup", { mode: "timestamp" }),
+  trackingNumber: text("tracking_number"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
+});
+
+// Packing Tasks
+export const packingTasks = sqliteTable("packing_tasks", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id")
+    .notNull()
+    .references(() => outboundOrders.id),
+  station: text("station").notNull(),
+  status: text("status", { enum: ["Pending", "In Progress", "Queued", "Completed"] }).notNull().default("Pending"),
+  startedAt: integer("started_at", { mode: "timestamp" }),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// Inbound ASN (Advanced Shipping Notice)
+export const asn = sqliteTable("asn", {
+  id: text("id").primaryKey(),
+  asnNumber: text("asn_number").notNull().unique(),
+  reference: text("reference").notNull(), // PO number, TRN, RET, etc.
+  type: text("type", { enum: ["Purchase Order", "Inter-warehouse Transfer", "Customer Return"] }).notNull(),
+  partnerId: text("partner_id").references(() => vendors.id),
+  partnerName: text("partner_name").notNull(),
+  dock: text("dock"),
+  expectedDate: integer("expected_date", { mode: "timestamp" }).notNull(),
+  appointmentStart: integer("appointment_start", { mode: "timestamp" }),
+  appointmentEnd: integer("appointment_end", { mode: "timestamp" }),
+  status: text("status", { enum: ["Scheduled", "Arrived", "Receiving", "QC Hold", "Completed", "Cancelled"] }).notNull().default("Scheduled"),
+  priority: text("priority", { enum: ["Low", "Medium", "High"] }).notNull().default("Medium"),
+  lineCount: integer("line_count").notNull().default(0),
+  totalUnits: integer("total_units").notNull().default(0),
+  assignedTo: text("assigned_to"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
+});
+
+// ASN Status History
+export const asnStatusHistory = sqliteTable("asn_status_history", {
+  id: text("id").primaryKey(),
+  asnId: text("asn_id")
+    .notNull()
+    .references(() => asn.id, { onDelete: "cascade" }),
+  status: text("status").notNull(),
+  changedAt: integer("changed_at", { mode: "timestamp" }).notNull(),
+  changedBy: text("changed_by"),
+  notes: text("notes"),
+});
+
+// Receiving Tasks
+export const receivingTasks = sqliteTable("receiving_tasks", {
+  id: text("id").primaryKey(),
+  asnId: text("asn_id")
+    .notNull()
+    .references(() => asn.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // Unload, QC, Putaway, etc.
+  status: text("status", { enum: ["Pending", "In Progress", "Completed", "On Hold"] }).notNull().default("Pending"),
+  assignedTo: text("assigned_to"),
+  dueTime: integer("due_time", { mode: "timestamp" }),
+  priority: text("priority", { enum: ["Low", "Medium", "High"] }).notNull().default("Medium"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// Receiving Exceptions
+export const receivingExceptions = sqliteTable("receiving_exceptions", {
+  id: text("id").primaryKey(),
+  asnId: text("asn_id")
+    .notNull()
+    .references(() => asn.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // Quantity Variance, Damage, Missing Item, etc.
+  status: text("status", { enum: ["Open", "Acknowledged", "Resolved"] }).notNull().default("Open"),
+  message: text("message").notNull(),
+  reportedBy: text("reported_by"),
+  timestamp: integer("timestamp", { mode: "timestamp" }).notNull(),
+  severity: text("severity", { enum: ["Low", "Warning", "Critical"] }).notNull().default("Warning"),
+  notes: text("notes"),
+  linkedTaskId: text("linked_task_id").references(() => receivingTasks.id),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
