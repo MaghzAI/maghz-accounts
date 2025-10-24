@@ -646,3 +646,238 @@ export const receivingExceptions = sqliteTable("receiving_exceptions", {
     .notNull()
     .default(sql`(unixepoch())`),
 });
+
+// ============================================
+// PROCUREMENT MODULE TABLES
+// ============================================
+
+// Purchase Orders
+export const purchaseOrders = sqliteTable("purchase_orders", {
+  id: text("id").primaryKey(),
+  poNumber: text("po_number").notNull().unique(),
+  vendorId: text("vendor_id")
+    .notNull()
+    .references(() => vendors.id),
+  warehouseId: text("warehouse_id")
+    .notNull()
+    .references(() => warehouses.id),
+  poDate: integer("po_date", { mode: "timestamp" }).notNull(),
+  requiredDate: integer("required_date", { mode: "timestamp" }),
+  deliveryDate: integer("delivery_date", { mode: "timestamp" }),
+  status: text("status", {
+    enum: ["draft", "submitted", "approved", "received", "cancelled"],
+  })
+    .notNull()
+    .default("draft"),
+  paymentTerms: text("payment_terms"),
+  shippingMethod: text("shipping_method"),
+  notes: text("notes"),
+  totalAmount: real("total_amount"),
+  taxAmount: real("tax_amount"),
+  grandTotal: real("grand_total"),
+  approvedBy: text("approved_by").references(() => users.id),
+  approvedAt: integer("approved_at", { mode: "timestamp" }),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
+});
+
+// Purchase Order Lines
+export const purchaseOrderLines = sqliteTable("purchase_order_lines", {
+  id: text("id").primaryKey(),
+  poId: text("po_id")
+    .notNull()
+    .references(() => purchaseOrders.id, { onDelete: "cascade" }),
+  lineNumber: integer("line_number").notNull(),
+  productId: text("product_id")
+    .notNull()
+    .references(() => products.id),
+  quantity: real("quantity").notNull(),
+  unitPrice: real("unit_price").notNull(),
+  totalPrice: real("total_price").notNull(),
+  receivedQuantity: real("received_quantity").notNull().default(0),
+  invoicedQuantity: real("invoiced_quantity").notNull().default(0),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// Goods Receipts
+export const goodsReceipts = sqliteTable("goods_receipts", {
+  id: text("id").primaryKey(),
+  grNumber: text("gr_number").notNull().unique(),
+  poId: text("po_id")
+    .notNull()
+    .references(() => purchaseOrders.id),
+  vendorId: text("vendor_id")
+    .notNull()
+    .references(() => vendors.id),
+  warehouseId: text("warehouse_id")
+    .notNull()
+    .references(() => warehouses.id),
+  grDate: integer("gr_date", { mode: "timestamp" }).notNull(),
+  status: text("status", {
+    enum: ["draft", "received", "inspected", "accepted", "rejected"],
+  })
+    .notNull()
+    .default("draft"),
+  totalQuantity: real("total_quantity"),
+  totalAmount: real("total_amount"),
+  notes: text("notes"),
+  inspectedBy: text("inspected_by").references(() => users.id),
+  inspectedAt: integer("inspected_at", { mode: "timestamp" }),
+  acceptedBy: text("accepted_by").references(() => users.id),
+  acceptedAt: integer("accepted_at", { mode: "timestamp" }),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
+});
+
+// Goods Receipt Lines
+export const goodsReceiptLines = sqliteTable("goods_receipt_lines", {
+  id: text("id").primaryKey(),
+  grId: text("gr_id")
+    .notNull()
+    .references(() => goodsReceipts.id, { onDelete: "cascade" }),
+  poLineId: text("po_line_id")
+    .notNull()
+    .references(() => purchaseOrderLines.id),
+  productId: text("product_id")
+    .notNull()
+    .references(() => products.id),
+  lineNumber: integer("line_number").notNull(),
+  orderedQuantity: real("ordered_quantity").notNull(),
+  receivedQuantity: real("received_quantity").notNull(),
+  acceptedQuantity: real("accepted_quantity").notNull().default(0),
+  rejectedQuantity: real("rejected_quantity").notNull().default(0),
+  unitPrice: real("unit_price").notNull(),
+  totalPrice: real("total_price"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// Purchase Invoices
+export const purchaseInvoices = sqliteTable("purchase_invoices", {
+  id: text("id").primaryKey(),
+  invoiceNumber: text("invoice_number").notNull().unique(),
+  vendorInvoiceNumber: text("vendor_invoice_number"),
+  poId: text("po_id").references(() => purchaseOrders.id),
+  grId: text("gr_id").references(() => goodsReceipts.id),
+  vendorId: text("vendor_id")
+    .notNull()
+    .references(() => vendors.id),
+  invoiceDate: integer("invoice_date", { mode: "timestamp" }).notNull(),
+  dueDate: integer("due_date", { mode: "timestamp" }),
+  status: text("status", {
+    enum: ["draft", "received", "matched", "approved", "paid", "cancelled"],
+  })
+    .notNull()
+    .default("draft"),
+  matchingStatus: text("matching_status", {
+    enum: ["unmatched", "partial", "matched"],
+  })
+    .notNull()
+    .default("unmatched"),
+  subtotal: real("subtotal"),
+  taxAmount: real("tax_amount"),
+  discountAmount: real("discount_amount"),
+  totalAmount: real("total_amount"),
+  paidAmount: real("paid_amount").notNull().default(0),
+  notes: text("notes"),
+  approvedBy: text("approved_by").references(() => users.id),
+  approvedAt: integer("approved_at", { mode: "timestamp" }),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
+});
+
+// Purchase Invoice Lines
+export const purchaseInvoiceLines = sqliteTable("purchase_invoice_lines", {
+  id: text("id").primaryKey(),
+  invoiceId: text("invoice_id")
+    .notNull()
+    .references(() => purchaseInvoices.id, { onDelete: "cascade" }),
+  poLineId: text("po_line_id").references(() => purchaseOrderLines.id),
+  grLineId: text("gr_line_id").references(() => goodsReceiptLines.id),
+  productId: text("product_id")
+    .notNull()
+    .references(() => products.id),
+  lineNumber: integer("line_number").notNull(),
+  description: text("description"),
+  quantity: real("quantity").notNull(),
+  unitPrice: real("unit_price").notNull(),
+  totalPrice: real("total_price").notNull(),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// Purchase Payments
+export const purchasePayments = sqliteTable("purchase_payments", {
+  id: text("id").primaryKey(),
+  paymentNumber: text("payment_number").notNull().unique(),
+  invoiceId: text("invoice_id")
+    .notNull()
+    .references(() => purchaseInvoices.id),
+  vendorId: text("vendor_id")
+    .notNull()
+    .references(() => vendors.id),
+  paymentDate: integer("payment_date", { mode: "timestamp" }).notNull(),
+  paymentMethod: text("payment_method", {
+    enum: ["cash", "check", "bank_transfer", "credit_card"],
+  }).notNull(),
+  amount: real("amount").notNull(),
+  reference: text("reference"),
+  status: text("status", {
+    enum: ["draft", "processed", "cleared", "cancelled"],
+  })
+    .notNull()
+    .default("draft"),
+  notes: text("notes"),
+  approvedBy: text("approved_by").references(() => users.id),
+  approvedAt: integer("approved_at", { mode: "timestamp" }),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
+});

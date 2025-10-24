@@ -15,6 +15,7 @@ import {
   Package,
   ShoppingCart,
   BarChart3,
+  Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
@@ -27,6 +28,7 @@ const navigation = [
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Vendors", href: "/vendors", icon: Building2 },
   { name: "Inventory", href: "/inventory", icon: Package },
+  { name: "Procurement", href: "/procurement", icon: Truck },
   { name: "Reports Center", href: "/reports-center", icon: BarChart3 },
   { name: "Financial Reports", href: "/reports", icon: TrendingUp },
   { name: "Journal Entries", href: "/journal", icon: FileText },
